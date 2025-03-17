@@ -49,13 +49,19 @@ list_last_connections() {
 ### Identify Potentially Vulnerable Entry Points ###
 identify_vulnerabilities() {
   echo -e "${RED}\n===== Potentially Vulnerable Entry Points =====${NC}"
+  
   ss -tulpen | grep 'LISTEN' | awk '{print $5, $7}' | while read -r line; do
     ADDRESS=$(echo $line | awk '{print $1}')
-    SERVICE=$(echo $line | awk '{print $2}')
+    SERVICE_INFO=$(echo $line | awk '{print $2}')
     PORT=$(echo $ADDRESS | awk -F: '{print $NF}')
+    SERVICE=$(echo $SERVICE_INFO | awk -F'[(,]' '{print $2}')
     
-    if systemctl is-active --quiet "$SERVICE" && [[ ! -z "$PORT" ]]; then
-      echo -e "${RED}WARNING: ${NC}Service ${SERVICE:-Unknown} is active and listening on port $PORT, which may be exposed."
+    if [[ -n "$PORT" && -n "$SERVICE" ]]; then
+      if systemctl list-units --type=service --state=running | grep -q "$SERVICE"; then
+        if sudo ufw status | grep -q "$PORT/tcp.*ALLOW" || sudo iptables -L INPUT -v -n | grep -q "ACCEPT.*dpt:$PORT"; then
+          echo -e "${RED}WARNING: ${NC}Service ${SERVICE:-Unknown} is active, listening on port $PORT, and exposed externally!"
+        fi
+      fi
     fi
   done
 }
