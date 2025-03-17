@@ -49,14 +49,13 @@ list_last_connections() {
 ### Identify Potentially Vulnerable Entry Points ###
 identify_vulnerabilities() {
   echo -e "${RED}\n===== Potentially Vulnerable Entry Points =====${NC}"
-  ss -tulpen | grep 'LISTEN' | while read -r line; do
-    PROTOCOL=$(echo $line | awk '{print $1}')
-    ADDRESS=$(echo $line | awk '{print $5}')
-    SERVICE=$(echo $line | awk '{print $7}')
+  ss -tulpen | grep 'LISTEN' | awk '{print $5, $7}' | while read -r line; do
+    ADDRESS=$(echo $line | awk '{print $1}')
+    SERVICE=$(echo $line | awk '{print $2}')
     PORT=$(echo $ADDRESS | awk -F: '{print $NF}')
     
-    if [[ "$PORT" =~ ^(22|21|3389|80|443|25|3306|5432|9090)$ ]]; then
-      echo -e "${RED}WARNING: ${NC}Service ${SERVICE:-Unknown} is listening on port $PORT ($PROTOCOL), which may be exposed."
+    if systemctl is-active --quiet "$SERVICE" && [[ ! -z "$PORT" ]]; then
+      echo -e "${RED}WARNING: ${NC}Service ${SERVICE:-Unknown} is active and listening on port $PORT, which may be exposed."
     fi
   done
 }
