@@ -46,6 +46,18 @@ list_last_connections() {
   last -i | head -n 15
 }
 
+### Identify Potentially Vulnerable Entry Points ###
+identify_vulnerabilities() {
+  echo -e "${RED}\n===== Potentially Vulnerable Entry Points =====${NC}"
+  ss -tulpen | grep 'LISTEN' | awk '{print $5, $7}' | while read -r line; do
+    PORT=$(echo $line | awk -F: '{print $NF}')
+    SERVICE=$(echo $line | awk '{print $NF}')
+    if [[ "$PORT" =~ ^(22|21|3389|80|443|25|3306|5432|9090)$ ]]; then
+      echo -e "${RED}WARNING: ${NC}Service $SERVICE is listening on port $PORT, which may be exposed."
+    fi
+  done
+}
+
 ### Display help menu ###
 show_help() {
   echo -e "${CYAN}\n===== Monitor Help =====${NC}"
@@ -56,6 +68,7 @@ show_help() {
   echo "  ports     - Show open ports and associated services"
   echo "  firewall  - Show firewall rules"
   echo "  last      - Show last 15 external connections"
+  echo "  vuln      - Identify potentially vulnerable entry points"
   echo "  all       - Show everything"
   echo "  help      - Display this help menu"
 }
@@ -71,12 +84,15 @@ elif [[ "$1" == "firewall" ]]; then
   list_firewall_rules
 elif [[ "$1" == "last" ]]; then
   list_last_connections
+elif [[ "$1" == "vuln" ]]; then
+  identify_vulnerabilities
 elif [[ "$1" == "all" ]]; then
   list_active_connections
   list_active_services
   list_open_ports
   list_firewall_rules
   list_last_connections
+  identify_vulnerabilities
 else
   show_help
 fi
