@@ -46,10 +46,37 @@ list_last_connections() {
   last -i | head -n 15
 }
 
-### Execute functions ###
-echo -e "${GREEN}\n===== System Analysis in Progress... =====${NC}"
-list_active_connections
-list_active_services
-list_open_ports
-list_firewall_rules
-list_last_connections
+### Display help menu ###
+show_help() {
+  echo -e "${CYAN}\n===== Monitor Help =====${NC}"
+  echo "Usage: monitor [command]"
+  echo "Available commands:"
+  echo "  now       - Show current active connections"
+  echo "  services  - Show active network services"
+  echo "  ports     - Show open ports and associated services"
+  echo "  firewall  - Show firewall rules"
+  echo "  last      - Show last 15 external connections"
+  echo "  all       - Show everything"
+  echo "  help      - Display this help menu"
+}
+
+### Command execution based on input ###
+if [[ "$1" == "now" ]]; then
+  list_active_connections
+elif [[ "$1" == "services" ]]; then
+  list_active_services
+elif [[ "$1" == "ports" ]]; then
+  list_open_ports
+elif [[ "$1" == "firewall" ]]; then
+  list_firewall_rules
+elif [[ "$1" == "last" ]]; then
+  list_last_connections
+elif [[ "$1" == "all" ]]; then
+  list_active_connections
+  list_active_services
+  list_open_ports
+  list_firewall_rules
+  list_last_connections
+else
+  show_help
+fi
