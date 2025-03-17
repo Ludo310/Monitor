@@ -1,8 +1,14 @@
 #!/bin/bash
 
 VERBOSE=false
+FOLLOW=false
+
 if [[ "$@" =~ "-v" ]]; then
   VERBOSE=true
+fi
+
+if [[ "$@" =~ "-f" ]]; then
+  FOLLOW=true
 fi
 
 # Colors
@@ -15,19 +21,46 @@ NC='\033[0m'
 ### Check active connections ###
 list_active_connections() {
   echo -e "${YELLOW}\n===== Active Connections =====${NC}"
-  netstat -tupan | grep ESTABLISHED | awk '{print $5, $6, $7}' | column -t
+  if [[ "$FOLLOW" == true ]]; then
+    while true; do
+      clear
+      echo -e "${YELLOW}\n===== Active Connections =====${NC}"
+      netstat -tupan | grep ESTABLISHED | awk '{print $5, $6, $7}' | column -t
+      sleep 2
+    done
+  else
+    netstat -tupan | grep ESTABLISHED | awk '{print $5, $6, $7}' | column -t
+  fi
 }
 
 ### Check active network services ###
 list_active_services() {
   echo -e "${CYAN}\n===== Active Network Services =====${NC}"
-  systemctl list-units --type=service --state=running | grep -E 'ssh|xrdp|nginx|ftp|rdp|mysql|postgresql|apache|vsftpd'
+  if [[ "$FOLLOW" == true ]]; then
+    while true; do
+      clear
+      echo -e "${CYAN}\n===== Active Network Services =====${NC}"
+      systemctl list-units --type=service --state=running | grep -E 'ssh|xrdp|nginx|ftp|rdp|mysql|postgresql|apache|vsftpd'
+      sleep 2
+    done
+  else
+    systemctl list-units --type=service --state=running | grep -E 'ssh|xrdp|nginx|ftp|rdp|mysql|postgresql|apache|vsftpd'
+  fi
 }
 
 ### Check open ports and associated services ###
 list_open_ports() {
   echo -e "${CYAN}\n===== Open Ports and Associated Services =====${NC}"
-  ss -tulpen | grep 'LISTEN' | awk '{print $1, $5, $7}' | column -t
+  if [[ "$FOLLOW" == true ]]; then
+    while true; do
+      clear
+      echo -e "${CYAN}\n===== Open Ports and Associated Services =====${NC}"
+      ss -tulpen | grep 'LISTEN' | awk '{print $1, $5, $7}' | column -t
+      sleep 2
+    done
+  else
+    ss -tulpen | grep 'LISTEN' | awk '{print $1, $5, $7}' | column -t
+  fi
 }
 
 ### Check firewall rules ###
@@ -49,19 +82,13 @@ list_last_connections() {
 ### Identify Potentially Vulnerable Entry Points ###
 identify_vulnerabilities() {
   echo -e "${RED}\n===== Potentially Vulnerable Entry Points =====${NC}"
-  
   ss -tulpen | grep 'LISTEN' | awk '{print $5, $7}' | while read -r line; do
     ADDRESS=$(echo $line | awk '{print $1}')
-    SERVICE_INFO=$(echo $line | awk '{print $2}')
+    SERVICE=$(echo $line | awk '{print $2}')
     PORT=$(echo $ADDRESS | awk -F: '{print $NF}')
-    SERVICE=$(echo $SERVICE_INFO | awk -F'[(,]' '{print $2}')
     
-    if [[ -n "$PORT" && -n "$SERVICE" ]]; then
-      if systemctl list-units --type=service --state=running | grep -q "$SERVICE"; then
-        if sudo ufw status | grep -q "$PORT/tcp.*ALLOW" || sudo iptables -L INPUT -v -n | grep -q "ACCEPT.*dpt:$PORT"; then
-          echo -e "${RED}WARNING: ${NC}Service ${SERVICE:-Unknown} is active, listening on port $PORT, and exposed externally!"
-        fi
-      fi
+    if systemctl is-active --quiet "$SERVICE" && [[ ! -z "$PORT" ]]; then
+      echo -e "${RED}WARNING: ${NC}Service ${SERVICE:-Unknown} is active and listening on port $PORT, which may be exposed."
     fi
   done
 }
@@ -69,7 +96,7 @@ identify_vulnerabilities() {
 ### Display help menu ###
 show_help() {
   echo -e "${CYAN}\n===== Monitor Help =====${NC}"
-  echo "Usage: monitor [command]"
+  echo "Usage: monitor [command] [-f] [-v]"
   echo "Available commands:"
   echo "  now       - Show current active connections"
   echo "  services  - Show active network services"
@@ -79,6 +106,9 @@ show_help() {
   echo "  vuln      - Identify potentially vulnerable entry points"
   echo "  all       - Show everything"
   echo "  help      - Display this help menu"
+  echo "Options:"
+  echo "  -f        - Follow mode: continuously update the output"
+  echo "  -v        - Verbose mode: show detailed logs"
 }
 
 ### Command execution based on input ###
