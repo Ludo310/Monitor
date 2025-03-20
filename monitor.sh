@@ -66,10 +66,10 @@ list_open_ports() {
 ### Check firewall rules ###
 list_firewall_rules() {
   echo -e "${RED}\n===== Firewall Rules =====${NC}"
-  if command -v ufw &> /dev/null && sudo ufw status | grep -q "Status: active"; then
-    sudo ufw status verbose
+    if command -v ufw &> /dev/null && sudo ufw status | grep -q "Status: active"; then
+    sudo ufw status
   else
-    sudo iptables -L -v -n
+    echo -e "${RED}UFW is not active.${NC}"
   fi
 }
 
